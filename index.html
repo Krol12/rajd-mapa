@@ -8,52 +8,25 @@
 <style>
   #map { height: 100vh; }
 
-  /* Menu dni */
   .day-menu { 
-    position: absolute; 
-    top: 10px; 
-    left: 50%; 
-    transform: translateX(-50%); 
-    z-index: 1000; 
-    background: white; 
-    padding: 5px; 
-    border-radius: 8px; 
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%); 
+    z-index: 1000; background: white; padding: 5px; border-radius: 8px; 
     box-shadow: 0 2px 6px rgba(0,0,0,0.3);
   }
   .day-menu button { 
-    margin: 2px; 
-    padding: 8px 14px; 
-    font-size: 16px; 
-    border: none; 
-    border-radius: 5px;
-    background-color: #f0f0f0;
-    cursor: pointer;
-    transition: 0.2s;
+    margin: 2px; padding: 8px 14px; font-size: 16px; border: none; 
+    border-radius: 5px; background-color: #f0f0f0; cursor: pointer; transition:0.2s;
   }
   .day-menu button:hover { background-color: #d0e0ff; }
   .day-menu button.active { background-color: #007bff; color: white; }
 
   /* Kompas */
   .compass { 
-    position: absolute; 
-    bottom: 20px; 
-    left: 50%; 
-    width: 80px;
-    height: 80px;
-    transform: translateX(-50%);
-    z-index: 1000; 
+    position: absolute; bottom: 20px; left: 50%; 
+    width: 80px; height: 80px; transform: translateX(-50%);
+    z-index: 1000; pointer-events:none;
   }
-  .compass svg {
-    width: 100%;
-    height: 100%;
-    transform-origin: 50% 50%;
-    transition: transform 0.2s;
-  }
-  .compass circle {
-    fill: rgba(255,255,255,0.8);
-    stroke: #333;
-    stroke-width: 4;
-  }
+  .compass svg { width: 100%; height: 100%; transform-origin: 50% 50%; transition: transform 0.2s;}
 </style>
 </head>
 <body>
@@ -69,9 +42,8 @@
 
 <div class="compass" id="compass">
   <svg viewBox="0 0 100 100">
-    <circle cx="50" cy="50" r="48"/>
-    <polygon points="50,12 45,50 50,45 55,50" fill="red"/>
-    <polygon points="50,88 45,50 50,55 55,50" fill="blue"/>
+    <circle cx="50" cy="50" r="48" fill="rgba(255,255,255,0.8)" stroke="#333" stroke-width="4"/>
+    <polygon id="arrow" points="50,15 45,50 50,45 55,50" fill="red"/>
   </svg>
 </div>
 
@@ -90,19 +62,24 @@ var currentIndex = 0;
 var markers = [];
 var userMarker = null;
 
+// Ikony
+var blueIcon = L.icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/616/616408.png', // niebieski punkt
+    iconSize: [32,32],
+    iconAnchor: [16,16]
+});
+var blackIcon = L.icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/64/64113.png', // pozycja użytkownika
+    iconSize: [32,32],
+    iconAnchor: [16,16]
+});
+
 // Wczytanie punktów z JSON
 fetch('punkty.json')
-  .then(response => {
-    if (!response.ok) throw new Error("HTTP error " + response.status);
-    return response.json();
-  })
-  .then(data => {
-    pointsData = data;
-    showDay(1); // startowy dzień
-  })
-  .catch(err => console.error("Błąd wczytywania punktów:", err));
+  .then(r => r.json())
+  .then(data => { pointsData = data; showDay(1); })
+  .catch(err => console.error(err));
 
-// Funkcja pokazująca punkty dnia
 function showDay(day){
   if(pointsData.length === 0) return;
   currentDay = day;
@@ -115,32 +92,28 @@ function showDay(day){
   if(dayPoints.length === 0) return;
 
   dayPoints.forEach(p => {
-    var m = L.marker([p.lat, p.lng], {icon:L.icon({
-      iconUrl:'https://cdn-icons-png.flaticon.com/512/616/616408.png', // niebieski punkt
-      iconSize:[32,32],
-      iconAnchor:[16,16]
-    })}).addTo(map).bindPopup(p.name);
+    var m = L.marker([p.lat, p.lng], {icon: blueIcon}).addTo(map).bindPopup(p.name);
     markers.push(m);
   });
 
   map.setView([dayPoints[0].lat, dayPoints[0].lng], 15);
 
-  // podświetlenie aktywnego przycisku
   document.querySelectorAll('.day-menu button').forEach(btn => btn.classList.remove('active'));
   var btn = document.querySelector('.day-menu button:nth-child(' + day + ')');
   if(btn) btn.classList.add('active');
 }
 
-// Śledzenie lokalizacji użytkownika
-map.locate({setView: true, maxZoom:16, watch:true});
+// Lokalizacja użytkownika
+map.locate({setView:true, maxZoom:16, watch:true});
 
 function updateDirection(latlng){
   var dayPoints = pointsData.filter(p => p.day === currentDay);
   if(currentIndex >= dayPoints.length) return;
   var target = dayPoints[currentIndex];
 
-  var angle = Math.atan2(target.lat - latlng.lat, target.lng - latlng.lng) * (180 / Math.PI);
-  document.querySelector('#compass svg').style.transform = 'rotate(' + angle + 'deg)';
+  // Obliczenie kąta
+  var angle = Math.atan2(target.lng - latlng.lng, target.lat - latlng.lat) * (180 / Math.PI);
+  document.getElementById('arrow').parentNode.style.transform = 'rotate(' + angle + 'deg)';
 
   var distance = map.distance(latlng, L.latLng(target.lat, target.lng));
   if(distance < 20){
@@ -155,11 +128,7 @@ function updateDirection(latlng){
 
 function onLocationFound(e){
   if(!userMarker){
-    userMarker = L.marker(e.latlng, {icon:L.icon({
-      iconUrl:'https://cdn-icons-png.flaticon.com/512/64/64113.png', // czarna pozycja
-      iconSize:[32,32],
-      iconAnchor:[16,16]
-    })}).addTo(map).bindPopup('Twoja pozycja');
+    userMarker = L.marker(e.latlng, {icon:blackIcon}).addTo(map).bindPopup('Twoja pozycja');
   } else {
     userMarker.setLatLng(e.latlng);
   }
@@ -167,7 +136,7 @@ function onLocationFound(e){
 }
 
 map.on('locationfound', onLocationFound);
-map.on('locationerror', function(e){ alert('Nie można określić lokalizacji: ' + e.message); });
+map.on('locationerror', e => alert('Nie można określić lokalizacji: ' + e.message));
 </script>
 </body>
 </html>
