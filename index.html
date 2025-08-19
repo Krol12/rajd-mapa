@@ -105,7 +105,7 @@ function showDay(day){
   if(dayPoints.length===0) return;
 
   dayPoints.forEach(p=>{
-    var m = L.marker([p.lat,p.lng],{icon:blueMarker}).addTo(map).bindPopup(p.name);
+    var m = L.marker([p.lat,p.lng],{icon: blueMarker}).addTo(map).bindPopup(p.name);
     markers.push(m);
   });
 
@@ -142,7 +142,7 @@ function updateDirection(latlng){
 
 function onLocationFound(e){
   if(!userMarker){
-    userMarker = L.marker(e.latlng,{icon:redMarker}).addTo(map).bindPopup('Twoja pozycja');
+    userMarker = L.marker(e.latlng,{icon: redMarker}).addTo(map).bindPopup('Twoja pozycja');
   } else { userMarker.setLatLng(e.latlng); }
   updateDirection(e.latlng);
 }
@@ -152,4 +152,5 @@ map.on('locationerror', e=>alert('Nie można określić lokalizacji: '+e.message
 </script>
 </body>
 </html>
+
 
