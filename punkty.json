@@ -4,4 +4,6 @@
   {"day":1,"lat":52.242,"lng":21.030,"name":"Punkt 2"},
   {"day":2,"lat":52.245,"lng":21.030,"name":"Start Dnia 2"},
   {"day":2,"lat":52.250,"lng":21.035,"name":"Punkt 1 Dnia 2"}
+  {"day":3,"lat":52.245,"lng":21.030,"name":"Start Dnia 3"},
+  {"day":3,"lat":52.250,"lng":21.035,"name":"Punkt 1 Dnia 3"}
 ]
