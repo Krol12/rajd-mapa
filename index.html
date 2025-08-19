@@ -8,6 +8,7 @@
 <style>
   #map { height: 100vh; }
 
+  /* Menu dni */
   .day-menu { 
     position: absolute; 
     top: 10px; 
@@ -32,18 +33,23 @@
   .day-menu button:hover { background-color: #d0e0ff; }
   .day-menu button.active { background-color: #007bff; color: white; }
 
+  /* Kompas */
   .compass { 
     position: absolute; 
     bottom: 20px; 
     left: 50%; 
     transform: translateX(-50%) rotate(0deg); 
     font-size: 32px; 
-    background: rgba(255,255,255,0.8); 
-    padding: 12px; 
+    background: rgba(255,255,255,0.9); 
+    width: 60px; 
+    height: 60px; 
+    display:flex; 
+    align-items:center; 
+    justify-content:center; 
     border-radius: 50%; 
     z-index: 1000; 
-    text-align: center;
     transition: transform 0.2s;
+    border: 2px solid #333;
     font-weight: bold;
   }
 </style>
@@ -65,99 +71,87 @@
 <script>
 // Inicjalizacja mapy
 var map = L.map('map').setView([52.237, 21.017], 13);
+
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-// Ikony
-var blueMarker = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  shadowSize: [41, 41]
-});
+let pointsData = [];
+let currentDay = 1;
+let currentIndex = 0;
+let markers = [];
+let userMarker = null;
 
-var redMarker = L.icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  shadowSize: [41, 41]
-});
+// Wczytanie JSON-a z punktami
+fetch('punkty.json')
+  .then(res => res.json())
+  .then(data => {
+    pointsData = data;
+    showDay(1);
+  })
+  .catch(err => console.error("Błąd wczytywania punktów:", err));
 
-// Punkty kontrolne (przykładowe)
-var pointsData = [
-  {day:1, lat:52.237, lng:21.017, name:"Start Dnia 1"},
-  {day:1, lat:52.240, lng:21.025, name:"Punkt 1"},
-  {day:1, lat:52.242, lng:21.030, name:"Punkt 2"},
-  {day:2, lat:52.245, lng:21.030, name:"Start Dnia 2"},
-  {day:2, lat:52.250, lng:21.035, name:"Punkt 1 Dnia 2"}
-];
-
-var currentDay = 1;
-var currentIndex = 0;
-var markers = [];
-
-// Funkcja podświetlania aktywnego dnia
-function highlightDayButton(day){
+function setActiveButton(day) {
   document.querySelectorAll('.day-menu button').forEach(btn => btn.classList.remove('active'));
-  document.querySelectorAll('.day-menu button')[day-1].classList.add('active');
+  document.querySelector(`.day-menu button:nth-child(${day})`).classList.add('active');
 }
 
-// Pokazanie punktów danego dnia
-function showDay(day){
+function showDay(day) {
+  if (pointsData.length === 0) return;
+
   currentDay = day;
   currentIndex = 0;
-  highlightDayButton(day);
 
   markers.forEach(m => map.removeLayer(m));
   markers = [];
-  
-  var dayPoints = pointsData.filter(p => p.day === day);
+
+  let dayPoints = pointsData.filter(p => p.day === day);
   dayPoints.forEach(p => {
-    var m = L.marker([p.lat, p.lng], {icon: blueMarker}).addTo(map).bindPopup(p.name);
+    let m = L.marker([p.lat, p.lng], {icon: L.icon({
+      iconUrl: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+      iconSize: [32,32],
+      iconAnchor: [16,32]
+    })}).addTo(map).bindPopup(p.name);
     markers.push(m);
   });
 
-  if(dayPoints.length > 0){
+  if(dayPoints.length > 0) {
     map.setView([dayPoints[0].lat, dayPoints[0].lng], 15);
   }
+
+  setActiveButton(day);
 }
-showDay(1);
 
 // Lokalizacja użytkownika
-var userMarker = null;
+map.locate({setView: true, maxZoom:16, watch:true});
 
-// Funkcja obliczająca kąt do kolejnego punktu
 function updateDirection(latlng){
-  var dayPoints = pointsData.filter(p => p.day === currentDay);
+  let dayPoints = pointsData.filter(p => p.day === currentDay);
   if(currentIndex >= dayPoints.length) return;
 
-  var target = dayPoints[currentIndex];
-  var angle = Math.atan2(target.lng - latlng.lng, target.lat - latlng.lat) * (180 / Math.PI);
+  let target = dayPoints[currentIndex];
+  let angle = Math.atan2(target.lng - latlng.lng, target.lat - latlng.lat) * (180 / Math.PI);
   document.getElementById('compass').style.transform = 'translateX(-50%) rotate(' + angle + 'deg)';
 
-  // Sprawdzenie odległości (20 m)
-  var distance = map.distance(latlng, L.latLng(target.lat, target.lng));
+  let distance = map.distance(latlng, L.latLng(target.lat, target.lng));
   if(distance < 20){
     currentIndex++;
     if(currentIndex < dayPoints.length){
-      target = dayPoints[currentIndex];
-      alert('Zaliczyłeś punkt: ' + target.name);
+      alert('Zaliczyłeś punkt: ' + dayPoints[currentIndex].name);
     } else {
       alert('Zaliczyłeś wszystkie punkty dnia ' + currentDay);
     }
   }
 }
 
-// Obsługa geolokalizacji
 function onLocationFound(e){
   if(!userMarker){
-    userMarker = L.marker(e.latlng, {icon: redMarker}).addTo(map).bindPopup('Twoja pozycja');
+    userMarker = L.marker(e.latlng, {icon:L.icon({
+      iconUrl:'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+      iconSize:[32,32],
+      iconAnchor:[16,32]
+    })}).addTo(map).bindPopup('Twoja pozycja');
   } else {
     userMarker.setLatLng(e.latlng);
   }
@@ -165,16 +159,10 @@ function onLocationFound(e){
 }
 
 map.on('locationfound', onLocationFound);
-map.on('locationerror', function(e){ alert('Nie można określić lokalizacji: ' + e.message); });
-
-// Uruchomienie geolokalizacji
-map.locate({
-  watch: true,
-  setView: false,
-  maxZoom: 16,
-  timeout: 10000,
-  maximumAge: 0
+map.on('locationerror', function(e){ 
+  alert('Nie można określić lokalizacji: ' + e.message); 
 });
 </script>
+
 </body>
 </html>
