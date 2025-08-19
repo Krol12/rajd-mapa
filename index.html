@@ -43,15 +43,15 @@
     position: absolute; 
     bottom: 20px; 
     left: 50%; 
+    width: 40px;
+    height: 40px;
     transform: translateX(-50%) rotate(0deg); 
-    font-size: 24px; 
-    background: rgba(255,255,255,0.8); 
-    padding: 10px; 
-    border-radius: 50%; 
     z-index: 1000; 
-    text-align: center;
     transition: transform 0.2s;
+    background: transparent;
   }
+  /* Strzałka kompasu */
+  .compass svg { width: 100%; height: 100%; }
 </style>
 </head>
 <body>
@@ -63,7 +63,13 @@
   <button onclick="showDay(5)">Dzień 5</button>
 </div>
 <div id="map"></div>
-<div class="compass" id="compass">→</div>
+<div class="compass" id="compass">
+  <!-- Strzałka czerwona-niebieska -->
+  <svg viewBox="0 0 100 100">
+    <polygon points="50,5 45,50 50,40 55,50" fill="red"/>
+    <polygon points="50,95 45,50 50,60 55,50" fill="blue"/>
+  </svg>
+</div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
@@ -75,10 +81,9 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-// Dane punktów będą wczytywane z JSON
 var pointsData = [];
 
-// Wczytanie punktów z pliku punkty.json
+// Wczytanie punktów z JSON
 fetch('punkty.json')
   .then(response => {
     if (!response.ok) throw new Error("HTTP error " + response.status);
@@ -86,7 +91,7 @@ fetch('punkty.json')
   })
   .then(data => {
     pointsData = data;
-    showDay(1); // startowy dzień
+    showDay(1); 
   })
   .catch(err => console.error("Błąd wczytywania punktów:", err));
 
@@ -96,16 +101,18 @@ var currentIndex = 0;
 var markers = [];
 var userMarker = null;
 
+// Ikony
+var defaultIcon = L.icon({ iconUrl:'https://cdn-icons-png.flaticon.com/512/64/64113.png', iconSize:[32,32], iconAnchor:[16,16] });
+var greenIcon = L.icon({ iconUrl:'https://cdn-icons-png.flaticon.com/512/190/190411.png', iconSize:[32,32], iconAnchor:[16,16] });
+
 // Funkcja wyświetlania punktów danego dnia
 function showDay(day){
   currentDay = day;
   currentIndex = 0;
 
-  // Usuń stare markery
   markers.forEach(m => map.removeLayer(m));
   markers = [];
 
-  // Podświetlenie przycisku
   document.querySelectorAll('.day-menu button').forEach(btn => btn.classList.remove('active'));
   var btn = document.querySelector('.day-menu button:nth-child(' + day + ')');
   if(btn) btn.classList.add('active');
@@ -114,7 +121,7 @@ function showDay(day){
   if(dayPoints.length === 0) return;
 
   dayPoints.forEach(p => {
-    var m = L.marker([p.lat, p.lng]).addTo(map).bindPopup(p.name);
+    var m = L.marker([p.lat, p.lng], {icon: defaultIcon}).addTo(map).bindPopup(p.name);
     markers.push(m);
   });
 
@@ -122,51 +129,4 @@ function showDay(day){
 }
 
 // Lokalizacja użytkownika
-map.locate({setView: true, maxZoom:16, watch:true});
-
-// Aktualizacja kompasu i sprawdzenie punktu
-function updateDirection(latlng){
-  var dayPoints = pointsData.filter(p => p.day === currentDay);
-  if(currentIndex >= dayPoints.length) return;
-
-  var target = dayPoints[currentIndex];
-  var angle = Math.atan2(target.lat - latlng.lat, target.lng - latlng.lng) * (180 / Math.PI);
-  document.getElementById('compass').style.transform = 'translateX(-50%) rotate(' + angle + 'deg)';
-
-  var distance = map.distance(latlng, L.latLng(target.lat, target.lng));
-  if(distance < 20){
-    L.popup()
-      .setLatLng(latlng)
-      .setContent('Zaliczyłeś punkt: ' + target.name)
-      .openOn(map);
-
-    currentIndex++;
-    if(currentIndex >= dayPoints.length){
-      L.popup()
-        .setLatLng(latlng)
-        .setContent('Zaliczyłeś wszystkie punkty dnia ' + currentDay)
-        .openOn(map);
-    }
-  }
-}
-
-// Aktualizacja pozycji użytkownika
-function onLocationFound(e){
-  if(!userMarker){
-    userMarker = L.marker(e.latlng, {icon:L.icon({
-      iconUrl:'https://cdn-icons-png.flaticon.com/512/64/64113.png',
-      iconSize:[32,32],
-      iconAnchor:[16,16]
-    })}).addTo(map).bindPopup('Twoja pozycja');
-  } else {
-    userMarker.setLatLng(e.latlng);
-  }
-  updateDirection(e.latlng);
-}
-
-map.on('locationfound', onLocationFound);
-map.on('locationerror', function(e){ alert('Nie można określić lokalizacji: ' + e.message); });
-
-</script>
-</body>
-</html>
+map.locate({setView: true, maxZoom:16, watc
