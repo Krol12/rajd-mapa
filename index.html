@@ -43,15 +43,17 @@
     position: absolute; 
     bottom: 20px; 
     left: 50%; 
-    width: 40px;
-    height: 40px;
-    transform: translateX(-50%) rotate(0deg); 
+    width: 50px;
+    height: 50px;
     z-index: 1000; 
-    transition: transform 0.2s;
-    background: transparent;
+    transform: translateX(-50%);
   }
-  /* Strzałka kompasu */
-  .compass svg { width: 100%; height: 100%; }
+  .compass svg {
+    width: 100%;
+    height: 100%;
+    transform-origin: 50% 50%;
+    transition: transform 0.2s;
+  }
 </style>
 </head>
 <body>
@@ -64,69 +66,6 @@
 </div>
 <div id="map"></div>
 <div class="compass" id="compass">
-  <!-- Strzałka czerwona-niebieska -->
   <svg viewBox="0 0 100 100">
     <polygon points="50,5 45,50 50,40 55,50" fill="red"/>
-    <polygon points="50,95 45,50 50,60 55,50" fill="blue"/>
-  </svg>
-</div>
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script>
-// Inicjalizacja mapy
-var map = L.map('map').setView([52.237, 21.017], 13);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
-
-var pointsData = [];
-
-// Wczytanie punktów z JSON
-fetch('punkty.json')
-  .then(response => {
-    if (!response.ok) throw new Error("HTTP error " + response.status);
-    return response.json();
-  })
-  .then(data => {
-    pointsData = data;
-    showDay(1); 
-  })
-  .catch(err => console.error("Błąd wczytywania punktów:", err));
-
-// Zmienne globalne
-var currentDay = 1;
-var currentIndex = 0;
-var markers = [];
-var userMarker = null;
-
-// Ikony
-var defaultIcon = L.icon({ iconUrl:'https://cdn-icons-png.flaticon.com/512/64/64113.png', iconSize:[32,32], iconAnchor:[16,16] });
-var greenIcon = L.icon({ iconUrl:'https://cdn-icons-png.flaticon.com/512/190/190411.png', iconSize:[32,32], iconAnchor:[16,16] });
-
-// Funkcja wyświetlania punktów danego dnia
-function showDay(day){
-  currentDay = day;
-  currentIndex = 0;
-
-  markers.forEach(m => map.removeLayer(m));
-  markers = [];
-
-  document.querySelectorAll('.day-menu button').forEach(btn => btn.classList.remove('active'));
-  var btn = document.querySelector('.day-menu button:nth-child(' + day + ')');
-  if(btn) btn.classList.add('active');
-
-  var dayPoints = pointsData.filter(p => p.day === day);
-  if(dayPoints.length === 0) return;
-
-  dayPoints.forEach(p => {
-    var m = L.marker([p.lat, p.lng], {icon: defaultIcon}).addTo(map).bindPopup(p.name);
-    markers.push(m);
-  });
-
-  map.setView([dayPoints[0].lat, dayPoints[0].lng], 15);
-}
-
-// Lokalizacja użytkownika
-map.locate({setView: true, maxZoom:16, watc
+    <p
