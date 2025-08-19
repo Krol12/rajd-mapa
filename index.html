@@ -60,4 +60,118 @@
 <div class="day-menu">
   <button onclick="showDay(1)">Dzień 1</button>
   <button onclick="showDay(2)">Dzień 2</button>
-  <
+  <button onclick="showDay(3)">Dzień 3</button>
+  <button onclick="showDay(4)">Dzień 4</button>
+  <button onclick="showDay(5)">Dzień 5</button>
+</div>
+<div id="map"></div>
+<div class="compass" id="compass">
+  <svg viewBox="0 0 100 100">
+    <polygon points="50,5 45,50 50,40 55,50" fill="red"/>
+    <polygon points="50,95 45,50 50,60 55,50" fill="blue"/>
+  </svg>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+// Inicjalizacja mapy
+var map = L.map('map').setView([52.237, 21.017], 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+// Dane punktów
+let pointsData = [];
+
+fetch('punkty.json')
+  .then(response => {
+    if (!response.ok) throw new Error("HTTP error " + response.status);
+    return response.json();
+  })
+  .then(data => {
+    pointsData = data;
+    showDay(1); 
+  })
+  .catch(err => console.error("Błąd wczytywania punktów:", err));
+
+var currentDay = 1;
+var currentIndex = 0;
+var markers = [];
+var userMarker = null;
+
+// Ikony
+var defaultIcon = L.icon({ iconUrl:'https://cdn-icons-png.flaticon.com/512/64/64113.png', iconSize:[32,32], iconAnchor:[16,16] });
+var greenIcon = L.icon({ iconUrl:'https://cdn-icons-png.flaticon.com/512/190/190411.png', iconSize:[32,32], iconAnchor:[16,16] });
+
+// Wyświetlanie punktów danego dnia
+function showDay(day){
+  currentDay = day;
+  currentIndex = 0;
+
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+
+  document.querySelectorAll('.day-menu button').forEach(btn => btn.classList.remove('active'));
+  var btn = document.querySelector('.day-menu button:nth-child(' + day + ')');
+  if(btn) btn.classList.add('active');
+
+  var dayPoints = pointsData.filter(p => p.day === day);
+  if(dayPoints.length === 0) return;
+
+  dayPoints.forEach(p => {
+    var m = L.marker([p.lat, p.lng], {icon: defaultIcon}).addTo(map).bindPopup(p.name);
+    markers.push(m);
+  });
+
+  map.setView([dayPoints[0].lat, dayPoints[0].lng], 15);
+}
+
+// Lokalizacja użytkownika
+map.locate({setView: true, maxZoom:16, watch:true});
+
+// Aktualizacja kompasu i zaliczenie punktu
+function updateDirection(latlng){
+  var dayPoints = pointsData.filter(p => p.day === currentDay);
+  if(currentIndex >= dayPoints.length) return;
+
+  var target = dayPoints[currentIndex];
+  var angle = Math.atan2(target.lat - latlng.lat, target.lng - latlng.lng) * (180 / Math.PI);
+
+  document.querySelector('#compass svg').style.transform = 'rotate(' + angle + 'deg)';
+
+  var distance = map.distance(latlng, L.latLng(target.lat, target.lng));
+  if(distance < 20){
+    if(markers[currentIndex]) markers[currentIndex].setIcon(greenIcon);
+
+    L.popup()
+      .setLatLng(latlng)
+      .setContent('Zaliczyłeś punkt: ' + target.name)
+      .openOn(map);
+
+    currentIndex++;
+    if(currentIndex >= dayPoints.length){
+      L.popup()
+        .setLatLng(latlng)
+        .setContent('Zaliczyłeś wszystkie punkty dnia ' + currentDay)
+        .openOn(map);
+    }
+  }
+}
+
+// Aktualizacja pozycji użytkownika
+function onLocationFound(e){
+  if(!userMarker){
+    userMarker = L.marker(e.latlng, {icon: defaultIcon}).addTo(map).bindPopup('Twoja pozycja');
+  } else {
+    userMarker.setLatLng(e.latlng);
+  }
+  updateDirection(e.latlng);
+}
+
+map.on('locationfound', onLocationFound);
+map.on('locationerror', function(e){ alert('Nie można określić lokalizacji: ' + e.message); });
+</script>
+</body>
+</html>
