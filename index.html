@@ -38,8 +38,8 @@
     position: absolute; 
     bottom: 20px; 
     left: 50%; 
-    width: 60px;
-    height: 60px;
+    width: 80px;
+    height: 80px;
     transform: translateX(-50%);
     z-index: 1000; 
   }
@@ -48,6 +48,11 @@
     height: 100%;
     transform-origin: 50% 50%;
     transition: transform 0.2s;
+  }
+  .compass circle {
+    fill: rgba(255,255,255,0.8);
+    stroke: #333;
+    stroke-width: 4;
   }
 </style>
 </head>
@@ -64,8 +69,9 @@
 
 <div class="compass" id="compass">
   <svg viewBox="0 0 100 100">
-    <polygon points="50,10 45,50 50,45 55,50" fill="red"/>
-    <polygon points="50,90 45,50 50,55 55,50" fill="blue"/>
+    <circle cx="50" cy="50" r="48"/>
+    <polygon points="50,12 45,50 50,45 55,50" fill="red"/>
+    <polygon points="50,88 45,50 50,55 55,50" fill="blue"/>
   </svg>
 </div>
 
@@ -98,7 +104,7 @@ fetch('punkty.json')
 
 // Funkcja pokazująca punkty dnia
 function showDay(day){
-  if(pointsData.length === 0) return; // dane jeszcze nie wczytane
+  if(pointsData.length === 0) return;
   currentDay = day;
   currentIndex = 0;
 
@@ -106,62 +112,3 @@ function showDay(day){
   markers = [];
 
   var dayPoints = pointsData.filter(p => p.day === day);
-  if(dayPoints.length === 0) return;
-
-  dayPoints.forEach(p => {
-    var m = L.marker([p.lat, p.lng]).addTo(map).bindPopup(p.name);
-    markers.push(m);
-  });
-
-  map.setView([dayPoints[0].lat, dayPoints[0].lng], 15);
-
-  // podświetlenie aktywnego przycisku
-  document.querySelectorAll('.day-menu button').forEach(btn => btn.classList.remove('active'));
-  var btn = document.querySelector('.day-menu button:nth-child(' + day + ')');
-  if(btn) btn.classList.add('active');
-}
-
-// Śledzenie lokalizacji użytkownika
-map.locate({setView: true, maxZoom:16, watch:true});
-
-function updateDirection(latlng){
-  var dayPoints = pointsData.filter(p => p.day === currentDay);
-  if(currentIndex >= dayPoints.length) return;
-  var target = dayPoints[currentIndex];
-
-  // obliczenie kąta w stopniach
-  var angle = Math.atan2(target.lat - latlng.lat, target.lng - latlng.lng) * (180 / Math.PI);
-
-  // obrót strzałki SVG
-  document.querySelector('#compass svg').style.transform = 'rotate(' + angle + 'deg)';
-
-  // Sprawdzenie czy punkt zaliczony (20 m)
-  var distance = map.distance(latlng, L.latLng(target.lat, target.lng));
-  if(distance < 20){
-    currentIndex++;
-    if(currentIndex < dayPoints.length){
-      alert('Zaliczyłeś punkt: ' + dayPoints[currentIndex].name);
-    } else {
-      alert('Zaliczyłeś wszystkie punkty dnia ' + currentDay);
-    }
-  }
-}
-
-function onLocationFound(e){
-  if(!userMarker){
-    userMarker = L.marker(e.latlng, {icon:L.icon({
-      iconUrl:'https://cdn-icons-png.flaticon.com/512/64/64113.png',
-      iconSize:[32,32],
-      iconAnchor:[16,16]
-    })}).addTo(map).bindPopup('Twoja pozycja');
-  } else {
-    userMarker.setLatLng(e.latlng);
-  }
-  updateDirection(e.latlng);
-}
-
-map.on('locationfound', onLocationFound);
-map.on('locationerror', function(e){ alert('Nie można określić lokalizacji: ' + e.message); });
-</script>
-</body>
-</html>
