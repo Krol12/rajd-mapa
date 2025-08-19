@@ -29,17 +29,14 @@
 </style>
 </head>
 <body>
-<div class="day-menu">
-  <button onclick="showDay(1)">Dzień 1</button>
-  <button onclick="showDay(2)">Dzień 2</button>
-</div>
+<div class="day-menu" id="dayMenu"></div>
 
 <div id="map"></div>
 
 <div class="compass" id="compass">
   <svg viewBox="0 0 100 100">
     <circle cx="50" cy="50" r="48" fill="rgba(255,255,255,0.8)" stroke="#333" stroke-width="4"/>
-    <polygon id="arrow" points="50,20 45,50 50,45 55,50" fill="red"/>
+    <polygon id="arrow" points="50,20 45,50 50,45 55,50" fill="black"/>
   </svg>
 </div>
 
@@ -58,8 +55,19 @@ var pointsData = [
   {day:1, lat:52.240, lng:21.025, name:"Punkt 1"},
   {day:1, lat:52.242, lng:21.030, name:"Punkt 2"},
   {day:2, lat:52.245, lng:21.030, name:"Start Dnia 2"},
-  {day:2, lat:52.250, lng:21.035, name:"Punkt 1 Dnia 2"}
+  {day:2, lat:52.250, lng:21.035, name:"Punkt 1 Dnia 2"},
+  {day:3, lat:52.251, lng:21.040, name:"Start Dnia 3"},
+  {day:3, lat:52.255, lng:21.045, name:"Punkt 1 Dnia 3"}
 ];
+
+var uniqueDays = [...new Set(pointsData.map(p=>p.day))];
+var dayMenu = document.getElementById('dayMenu');
+uniqueDays.forEach(day=>{
+  var btn = document.createElement('button');
+  btn.textContent = 'Dzień '+day;
+  btn.onclick = ()=>showDay(day);
+  dayMenu.appendChild(btn);
+});
 
 var currentDay = 1;
 var currentIndex = 0;
@@ -94,13 +102,13 @@ function showDay(day){
   map.setView([dayPoints[0].lat, dayPoints[0].lng], 15);
 
   document.querySelectorAll('.day-menu button').forEach(b=>b.classList.remove('active'));
-  var btn = document.querySelector('.day-menu button:nth-child(' + day + ')');
+  var btns = Array.from(document.querySelectorAll('.day-menu button'));
+  var btn = btns.find(b=>b.textContent==='Dzień '+day);
   if(btn) btn.classList.add('active');
 }
 
 showDay(1);
 
-// Lokalizacja
 map.locate({setView:true, maxZoom:16, watch:true});
 
 function updateDirection(latlng){
