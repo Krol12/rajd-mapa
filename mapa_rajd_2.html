@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa Rajdu</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<style>
+  #map { height: 100vh; }
+  .day-menu { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: white; padding: 5px; border-radius: 5px; }
+  .day-menu button { margin: 2px; padding: 8px 12px; font-size: 16px; }
+  .compass { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); font-size: 24px; background: rgba(255,255,255,0.8); padding: 10px; border-radius: 50%; z-index: 1000; }
+</style>
+</head>
+<body>
+<div class="day-menu">
+  <button onclick="showDay(1)">Dzień 1</button>
+  <button onclick="showDay(2)">Dzień 2</button>
+  <button onclick="showDay(3)">Dzień 3</button>
+  <button onclick="showDay(4)">Dzień 4</button>
+  <button onclick="showDay(5)">Dzień 5</button>
+</div>
+<div id="map"></div>
+<div class="compass" id="compass">→</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+// Inicjalizacja mapy
+var map = L.map('map').setView([52.237, 21.017], 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+// Punkty kontrolne przykładowe
+var pointsData = [];
+
+fetch('punkty.json')
+  .then(response => response.json())
+  .then(data => {
+    pointsData = data;
+    showDay(1); // pokaz pierwszy dzień po załadowaniu danych
+  })
+  .catch(error => console.error('Błąd wczytywania punktów:', error));
+
+var currentDay = 1;
+var currentIndex = 0;
+var markers = [];
+
+function showDay(day){
+  currentDay = day;
+  currentIndex = 0;
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  
+  var dayPoints = pointsData.filter(p => p.day === day);
+  dayPoints.forEach(p => {
+    var m = L.marker([p.lat, p.lng]).addTo(map).bindPopup(p.name);
+    markers.push(m);
+  });
+  map.setView([dayPoints[0].lat, dayPoints[0].lng], 15);
+}
+
+showDay(1);
+
+// Lokalizacja uczestnika
+var userMarker = null;
+var targetMarker = null;
+
+map.locate({setView: true, maxZoom:16, watch:true});
+
+function updateDirection(latlng){
+  var dayPoints = pointsData.filter(p => p.day === currentDay);
+  if(currentIndex >= dayPoints.length) return;
+  var target = dayPoints[currentIndex];
+  var angle = Math.atan2(target.lng - latlng.lng, target.lat - latlng.lat) * (180 / Math.PI);
+  document.getElementById('compass').style.transform = 'translateX(-50%) rotate(' + angle + 'deg)';
+
+  // Sprawdzenie, czy punkt zaliczony (20 m)
+  var distance = map.distance(latlng, L.latLng(target.lat, target.lng));
+  if(distance < 20){
+    currentIndex++;
+    if(currentIndex < dayPoints.length){
+      target = dayPoints[currentIndex];
+      alert('Zaliczyłeś punkt: ' + target.name);
+    } else {
+      alert('Zaliczyłeś wszystkie punkty dnia ' + currentDay);
+    }
+  }
+}
+
+function onLocationFound(e){
+  if(!userMarker){
+    userMarker = L.marker(e.latlng, {icon:L.icon({
+      iconUrl:'https://cdn-icons-png.flaticon.com/512/64/64113.png',
+      iconSize:[32,32],
+      iconAnchor:[16,16]
+    })}).addTo(map).bindPopup('Twoja pozycja');
+  } else {
+    userMarker.setLatLng(e.latlng);
+  }
+  updateDirection(e.latlng);
+}
+
+map.on('locationfound', onLocationFound);
+map.on('locationerror', function(e){ alert('Nie można określić lokalizacji: ' + e.message); });
+</script>
+</body>
+</html>
