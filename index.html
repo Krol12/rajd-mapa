@@ -75,67 +75,82 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-// Punkty kontrolne przykładowe
+// Dane punktów będą wczytywane z JSON
 var pointsData = [];
 
+// Wczytanie punktów z pliku punkty.json
 fetch('punkty.json')
   .then(response => {
-      if (!response.ok) throw new Error("HTTP error " + response.status);
-      return response.json();
+    if (!response.ok) throw new Error("HTTP error " + response.status);
+    return response.json();
   })
   .then(data => {
-      pointsData = data;
-      showDay(1); // startowy dzień po wczytaniu danych
+    pointsData = data;
+    showDay(1); // startowy dzień
   })
   .catch(err => console.error("Błąd wczytywania punktów:", err));
-  
-  
+
+// Zmienne globalne
 var currentDay = 1;
 var currentIndex = 0;
 var markers = [];
+var userMarker = null;
 
+// Funkcja wyświetlania punktów danego dnia
 function showDay(day){
   currentDay = day;
   currentIndex = 0;
+
+  // Usuń stare markery
   markers.forEach(m => map.removeLayer(m));
   markers = [];
-  
+
+  // Podświetlenie przycisku
+  document.querySelectorAll('.day-menu button').forEach(btn => btn.classList.remove('active'));
+  var btn = document.querySelector('.day-menu button:nth-child(' + day + ')');
+  if(btn) btn.classList.add('active');
+
   var dayPoints = pointsData.filter(p => p.day === day);
+  if(dayPoints.length === 0) return;
+
   dayPoints.forEach(p => {
     var m = L.marker([p.lat, p.lng]).addTo(map).bindPopup(p.name);
     markers.push(m);
   });
+
   map.setView([dayPoints[0].lat, dayPoints[0].lng], 15);
 }
 
-showDay(1);
-
-// Lokalizacja uczestnika
-var userMarker = null;
-var targetMarker = null;
-
+// Lokalizacja użytkownika
 map.locate({setView: true, maxZoom:16, watch:true});
 
+// Aktualizacja kompasu i sprawdzenie punktu
 function updateDirection(latlng){
   var dayPoints = pointsData.filter(p => p.day === currentDay);
   if(currentIndex >= dayPoints.length) return;
+
   var target = dayPoints[currentIndex];
-  var angle = Math.atan2(target.lng - latlng.lng, target.lat - latlng.lat) * (180 / Math.PI);
+  var angle = Math.atan2(target.lat - latlng.lat, target.lng - latlng.lng) * (180 / Math.PI);
   document.getElementById('compass').style.transform = 'translateX(-50%) rotate(' + angle + 'deg)';
 
-  // Sprawdzenie, czy punkt zaliczony (20 m)
   var distance = map.distance(latlng, L.latLng(target.lat, target.lng));
   if(distance < 20){
+    L.popup()
+      .setLatLng(latlng)
+      .setContent('Zaliczyłeś punkt: ' + target.name)
+      .openOn(map);
+
     currentIndex++;
-    if(currentIndex < dayPoints.length){
-      target = dayPoints[currentIndex];
-      alert('Zaliczyłeś punkt: ' + target.name);
-    } else {
-      alert('Zaliczyłeś wszystkie punkty dnia ' + currentDay);
+    if(currentIndex >= dayPoints.length){
+      L.popup()
+        .setLatLng(latlng)
+        .setContent('Zaliczyłeś wszystkie punkty dnia ' + currentDay)
+        .openOn(map);
     }
   }
 }
 
+// Aktualizacja pozycji użytkownika
 function onLocationFound(e){
   if(!userMarker){
     userMarker = L.marker(e.latlng, {icon:L.icon({
@@ -151,12 +166,7 @@ function onLocationFound(e){
 
 map.on('locationfound', onLocationFound);
 map.on('locationerror', function(e){ alert('Nie można określić lokalizacji: ' + e.message); });
+
 </script>
 </body>
 </html>
-
-
-
-
-
-
