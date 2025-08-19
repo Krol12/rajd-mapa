@@ -34,15 +34,22 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 // Punkty kontrolne przykładowe
-var pointsData = [];
+<script>
+let pointsData = [];
 
-fetch('punkty.json')
-  .then(response => response.json())
+fetch('punkty.json')   // <-- WAŻNE: tylko nazwa pliku
+  .then(response => {
+      if (!response.ok) {
+          throw new Error("HTTP error " + response.status);
+      }
+      return response.json();
+  })
   .then(data => {
       pointsData = data;
-      showDay(1);
+      showDay(1);   // albo startowy dzień
   })
   .catch(err => console.error("Błąd wczytywania punktów:", err));
+</script>
   
 var currentDay = 1;
 var currentIndex = 0;
@@ -108,5 +115,6 @@ map.on('locationerror', function(e){ alert('Nie można określić lokalizacji: '
 </script>
 </body>
 </html>
+
 
 
