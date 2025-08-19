@@ -62,81 +62,23 @@ var currentIndex = 0;
 var markers = [];
 var userMarker = null;
 
-// Ikony
-var blueIcon = L.icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/616/616408.png', // niebieski punkt
-    iconSize: [32,32],
-    iconAnchor: [16,16]
+// Standardowe markery Leaflet
+var blueMarker = L.icon({
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    iconSize: [25,41],
+    iconAnchor: [12,41],
+    popupAnchor: [1,-34],
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    shadowSize: [41,41]
 });
-var blackIcon = L.icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/64/64113.png', // pozycja użytkownika
-    iconSize: [32,32],
-    iconAnchor: [16,16]
+
+var blackMarker = L.icon({
+    iconUrl:'https://cdn-icons-png.flaticon.com/512/64/64113.png',
+    iconSize:[32,32],
+    iconAnchor:[16,16]
 });
 
 // Wczytanie punktów z JSON
 fetch('punkty.json')
   .then(r => r.json())
-  .then(data => { pointsData = data; showDay(1); })
-  .catch(err => console.error(err));
-
-function showDay(day){
-  if(pointsData.length === 0) return;
-  currentDay = day;
-  currentIndex = 0;
-
-  markers.forEach(m => map.removeLayer(m));
-  markers = [];
-
-  var dayPoints = pointsData.filter(p => p.day === day);
-  if(dayPoints.length === 0) return;
-
-  dayPoints.forEach(p => {
-    var m = L.marker([p.lat, p.lng], {icon: blueIcon}).addTo(map).bindPopup(p.name);
-    markers.push(m);
-  });
-
-  map.setView([dayPoints[0].lat, dayPoints[0].lng], 15);
-
-  document.querySelectorAll('.day-menu button').forEach(btn => btn.classList.remove('active'));
-  var btn = document.querySelector('.day-menu button:nth-child(' + day + ')');
-  if(btn) btn.classList.add('active');
-}
-
-// Lokalizacja użytkownika
-map.locate({setView:true, maxZoom:16, watch:true});
-
-function updateDirection(latlng){
-  var dayPoints = pointsData.filter(p => p.day === currentDay);
-  if(currentIndex >= dayPoints.length) return;
-  var target = dayPoints[currentIndex];
-
-  // Obliczenie kąta
-  var angle = Math.atan2(target.lng - latlng.lng, target.lat - latlng.lat) * (180 / Math.PI);
-  document.getElementById('arrow').parentNode.style.transform = 'rotate(' + angle + 'deg)';
-
-  var distance = map.distance(latlng, L.latLng(target.lat, target.lng));
-  if(distance < 20){
-    currentIndex++;
-    if(currentIndex < dayPoints.length){
-      alert('Zaliczyłeś punkt: ' + dayPoints[currentIndex].name);
-    } else {
-      alert('Zaliczyłeś wszystkie punkty dnia ' + currentDay);
-    }
-  }
-}
-
-function onLocationFound(e){
-  if(!userMarker){
-    userMarker = L.marker(e.latlng, {icon:blackIcon}).addTo(map).bindPopup('Twoja pozycja');
-  } else {
-    userMarker.setLatLng(e.latlng);
-  }
-  updateDirection(e.latlng);
-}
-
-map.on('locationfound', onLocationFound);
-map.on('locationerror', e => alert('Nie można określić lokalizacji: ' + e.message));
-</script>
-</body>
-</html>
+  .t
