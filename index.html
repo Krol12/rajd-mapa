@@ -177,7 +177,8 @@ function locateUser(){
 function onLocationFound(e){
   if(!userMarker){
       userMarker = L.marker(e.latlng, {icon: L.icon({
-          iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png', // czerwony marker
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
           iconSize:[25,41],
           iconAnchor:[12,41],
           popupAnchor:[1,-34]
@@ -207,3 +208,4 @@ map.on('locationerror', function(e){ alert('Nie można określić lokalizacji: '
 
 </body>
 </html>
+
