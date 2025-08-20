@@ -8,9 +8,25 @@
 <style>
   #map { height: 100vh; }
 
-  .day-menu { 
+  /* Tytuł */
+  #title { 
     position: absolute; 
     top: 10px; 
+    left: 50%; 
+    transform: translateX(-50%); 
+    z-index: 1000; 
+    background: white; 
+    padding: 8px 15px; 
+    border-radius: 8px; 
+    font-size: 18px;
+    font-weight: bold;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+
+  /* Menu dni */
+  .day-menu { 
+    position: absolute; 
+    top: 50px; 
     left: 50%; 
     transform: translateX(-50%); 
     z-index: 1000; 
@@ -29,31 +45,31 @@
     cursor: pointer;
     transition: 0.2s;
   }
-  .day-menu button:hover {
-    background-color: #d0e0ff;
-  }
-  .day-menu button.active {
-    background-color: #007bff;
-    color: white;
-  }
+  .day-menu button:hover { background-color: #d0e0ff; }
+  .day-menu button.active { background-color: #007bff; color: white; }
 
-  .compass { 
+  /* Przyciski lokalizacji */
+  .loc-btn { 
     position: absolute; 
-    bottom: 20px; 
+    top: 100px; 
     left: 50%; 
-    transform: translateX(-50%) rotate(0deg); 
-    font-size: 32px; 
-    background: rgba(255,255,255,0.8); 
-    padding: 10px; 
-    border-radius: 50%; 
+    transform: translateX(-50%);
     z-index: 1000; 
-    text-align: center;
-    font-weight: bold;
-    transition: transform 0.2s;
+  }
+  .loc-btn button {
+    padding: 8px 14px; 
+    font-size: 16px; 
+    border: none; 
+    border-radius: 5px;
+    background-color: #28a745;
+    color: white;
+    cursor: pointer;
   }
 </style>
 </head>
 <body>
+
+<div id="title">Rajd w dniach 1-5</div>
 
 <div class="day-menu">
   <button onclick="showDay(1)">Dzień 1</button>
@@ -63,111 +79,138 @@
   <button onclick="showDay(5)">Dzień 5</button>
 </div>
 
+<div class="loc-btn">
+  <button onclick="findUserLocation()">Znajdź moją lokalizację</button>
+</div>
+
 <div id="map"></div>
-<div class="compass" id="compass">→</div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-// Inicjalizacja mapy
-var map = L.map('map').setView([52.322258, 16.856098], 13);
+var map = L.map('map').setView([52.237, 21.017], 13);
 
+// Tile layer
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-var pointsData = [];
-var currentDay = 1;
-var currentIndex = 0;
-var markers = [];
+// Zmienna na dane punktów
+let pointsData = [];
 
-// Wczytanie punktów z JSON
+// Wczytanie punktów z zewnętrznego JSON
 fetch('punkty.json')
   .then(res => res.json())
   .then(data => {
-      pointsData = data;
-      showDay(1);
+      pointsData = data.map(p => ({ ...p, visited: false })); // dodajemy visited
+      showDay(1); // startowy dzień
   })
   .catch(err => console.error("Błąd wczytywania punktów:", err));
 
-// Funkcja pokazująca punkty dnia i podświetlająca przycisk
+var currentDay = 1;
+var markers = [];
+var userMarker = null;
+
+// Funkcja wyświetlania punktów danego dnia
 function showDay(day){
   currentDay = day;
-  currentIndex = 0;
-
-  // Zaznacz aktywny przycisk
-  document.querySelectorAll('.day-menu button').forEach(btn => {
-      btn.classList.remove('active');
-  });
-  document.querySelector('.day-menu button:nth-child(' + day + ')').classList.add('active');
-
   markers.forEach(m => map.removeLayer(m));
   markers = [];
 
+  document.querySelectorAll('.day-menu button').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.day-menu button:nth-child(${day})`)?.classList.add('active');
+
   var dayPoints = pointsData.filter(p => p.day === day);
   dayPoints.forEach(p => {
-    var m = L.marker([p.lat, p.lng], {icon: L.icon({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34]
+    let m = L.marker([p.lat, p.lng], {icon: L.icon({
+        iconUrl:'https://cdn-icons-png.flaticon.com/512/64/64096.png', // niebieski marker
+        iconSize:[32,32],
+        iconAnchor:[16,32]
     })}).addTo(map).bindPopup(p.name);
     markers.push(m);
   });
 
   if(dayPoints.length > 0){
-      map.setView([dayPoints[0].lat, dayPoints[0].lng], 15);
+    map.setView([dayPoints[0].lat, dayPoints[0].lng], 15);
   }
 }
 
-// Lokalizacja użytkownika
-var userMarker = null;
-map.locate({setView: true, maxZoom:16, watch:true});
-
-// Aktualizacja strzałki kompasu
-function updateDirection(latlng){
-  var dayPoints = pointsData.filter(p => p.day === currentDay);
-  if(currentIndex >= dayPoints.length) return;
-
-  var target = dayPoints[currentIndex];
-  var angle = Math.atan2(target.lng - latlng.lng, target.lat - latlng.lat) * (180 / Math.PI);
-  document.getElementById('compass').style.transform = 'translateX(-50%) rotate(' + angle + 'deg)';
-
-  var distance = map.distance(latlng, L.latLng(target.lat, target.lng));
-  if(distance < 20){
-    currentIndex++;
-    if(currentIndex < dayPoints.length){
-      target = dayPoints[currentIndex];
-      alert('Zaliczyłeś punkt: ' + target.name);
-    } else {
-      alert('Zaliczyłeś wszystkie punkty dnia ' + currentDay);
-    }
-  }
+// Funkcja do wyszukiwania lokalizacji użytkownika
+function findUserLocation(){
+  map.locate({setView: false, maxZoom:16});
 }
 
-// Lokalizacja użytkownika
+// Obsługa znalezienia lokalizacji
 function onLocationFound(e){
   if(!userMarker){
-    var redIcon = L.icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41]
-    });
-
-    userMarker = L.marker(e.latlng, {icon: redIcon}).addTo(map).bindPopup('Twoja pozycja');
+    userMarker = L.marker(e.latlng, {icon:L.icon({
+      iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png', // czerwony marker
+      iconSize:[32,32],
+      iconAnchor:[16,32]
+    })}).addTo(map).bindPopup('Twoja pozycja');
   } else {
     userMarker.setLatLng(e.latlng);
   }
-  updateDirection(e.latlng);
+  updateVisitedPoints(e.latlng);
 }
 
+// Funkcja sprawdzająca odległość do punktów i pokazująca komunikaty
+function updateVisitedPoints(latlng){
+  let dayPoints = pointsData.filter(p => p.day === currentDay);
+  dayPoints.forEach(p => {
+    let distance = map.distance(latlng, L.latLng(p.lat, p.lng));
+    if(distance < 50 && !p.visited){  // 50 metrów i jeszcze niezaliczony
+      p.visited = true;
+      showToast("✅ Zaliczyłeś punkt: " + p.name);
+    }
+  });
+
+  if(dayPoints.length > 0 && dayPoints.every(p => p.visited)){
+    showToast("🎉 Zaliczyłeś wszystkie punkty dnia " + currentDay);
+  }
+}
+
+// Komunikaty z przyciskiem OK
+function showToast(msg){
+  let toast = document.createElement("div");
+  toast.innerHTML = `<div style="
+    background: rgba(0,0,0,0.9); 
+    color: white; 
+    padding: 15px 20px; 
+    border-radius: 8px; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    min-width: 250px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  ">
+    <span>${msg}</span>
+    <button style="
+      margin-left: 10px; 
+      padding: 5px 10px; 
+      border: none; 
+      border-radius: 4px; 
+      cursor: pointer;
+      background: #007bff;
+      color: white;
+    ">OK</button>
+  </div>`;
+  toast.style.position = "fixed";
+  toast.style.bottom = "20px";
+  toast.style.left = "50%";
+  toast.style.transform = "translateX(-50%)";
+  toast.style.zIndex = "2000";
+  document.body.appendChild(toast);
+
+  toast.querySelector("button").addEventListener("click", () => {
+    toast.remove();
+  });
+}
+
+// Eventy lokalizacji
 map.on('locationfound', onLocationFound);
 map.on('locationerror', function(e){ alert('Nie można określić lokalizacji: ' + e.message); });
-</script>
 
+</script>
 </body>
 </html>
-
