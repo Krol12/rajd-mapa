@@ -8,17 +8,16 @@
 <style>
   #map { height: 100vh; }
 
-  /* Tytuł */
-  #title { 
-    position: absolute; 
-    top: 10px; 
-    left: 50%; 
-    transform: translateX(-50%); 
-    z-index: 1000; 
-    background: white; 
-    padding: 8px 15px; 
-    border-radius: 8px; 
-    font-size: 18px;
+  /* Pole tytułowe */
+  .title {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: white;
+    padding: 5px 10px;
+    border-radius: 5px;
     font-weight: bold;
     box-shadow: 0 2px 6px rgba(0,0,0,0.3);
   }
@@ -48,28 +47,24 @@
   .day-menu button:hover { background-color: #d0e0ff; }
   .day-menu button.active { background-color: #007bff; color: white; }
 
-  /* Przyciski lokalizacji */
-  .loc-btn { 
-    position: absolute; 
-    top: 100px; 
-    left: 50%; 
-    transform: translateX(-50%);
-    z-index: 1000; 
-  }
-  .loc-btn button {
-    padding: 8px 14px; 
-    font-size: 16px; 
-    border: none; 
-    border-radius: 5px;
-    background-color: #28a745;
+  /* Przycisk lokalizacji */
+  #locateBtn {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1000;
+    padding: 10px 15px;
+    background: #007bff;
     color: white;
+    border: none;
+    border-radius: 5px;
     cursor: pointer;
   }
 </style>
 </head>
 <body>
 
-<div id="title">Rajd w dniach 1-5</div>
+<div class="title">Rajd w dniach</div>
 
 <div class="day-menu">
   <button onclick="showDay(1)">Dzień 1</button>
@@ -79,138 +74,85 @@
   <button onclick="showDay(5)">Dzień 5</button>
 </div>
 
-<div class="loc-btn">
-  <button onclick="findUserLocation()">Znajdź moją lokalizację</button>
-</div>
+<button id="locateBtn">Znajdź moją lokalizację</button>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-var map = L.map('map').setView([52.237, 21.017], 13);
+// Inicjalizacja mapy
+var map = L.map('map').setView([52.32, 16.85], 13);
 
-// Tile layer
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-// Zmienna na dane punktów
-let pointsData = [];
+// Ikony
+var blueIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25,41],
+  iconAnchor: [12,41],
+  popupAnchor: [1,-34],
+  shadowSize: [41,41]
+});
 
-// Wczytanie punktów z zewnętrznego JSON
-fetch('punkty.json')
-  .then(res => res.json())
-  .then(data => {
-      pointsData = data.map(p => ({ ...p, visited: false })); // dodajemy visited
-      showDay(1); // startowy dzień
-  })
-  .catch(err => console.error("Błąd wczytywania punktów:", err));
+var redIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25,41],
+  iconAnchor: [12,41],
+  popupAnchor: [1,-34],
+  shadowSize: [41,41]
+});
+
+// Punkty rajdu (przykładowe, można wczytać z JSON)
+var pointsData = [
+  {"day":1,"lat":52.322258,"lng":16.856098,"name":"Punkt 1"},
+  {"day":1,"lat":52.320904,"lng":16.853241,"name":"Punkt 2"},
+  {"day":2,"lat":52.317755,"lng":16.846434,"name":"Punkt 1 Dnia 2"},
+  {"day":2,"lat":52.318990,"lng":16.827553,"name":"Punkt 2 Dnia 2"},
+  {"day":3,"lat":52.310389,"lng":16.842472,"name":"Punkt 1 Dnia 3"}
+];
 
 var currentDay = 1;
 var markers = [];
-var userMarker = null;
 
-// Funkcja wyświetlania punktów danego dnia
 function showDay(day){
   currentDay = day;
   markers.forEach(m => map.removeLayer(m));
   markers = [];
 
-  document.querySelectorAll('.day-menu button').forEach(b => b.classList.remove('active'));
-  document.querySelector(`.day-menu button:nth-child(${day})`)?.classList.add('active');
-
   var dayPoints = pointsData.filter(p => p.day === day);
   dayPoints.forEach(p => {
-    let m = L.marker([p.lat, p.lng], {icon: L.icon({
-        iconUrl:'https://cdn-icons-png.flaticon.com/512/64/64096.png', // niebieski marker
-        iconSize:[32,32],
-        iconAnchor:[16,32]
-    })}).addTo(map).bindPopup(p.name);
+    var m = L.marker([p.lat, p.lng], {icon: blueIcon}).addTo(map).bindPopup(p.name);
     markers.push(m);
   });
-
-  if(dayPoints.length > 0){
-    map.setView([dayPoints[0].lat, dayPoints[0].lng], 15);
-  }
 }
 
-// Funkcja do wyszukiwania lokalizacji użytkownika
-function findUserLocation(){
-  map.locate({setView: false, maxZoom:16});
+// Wyświetlamy dzień 1 na start
+showDay(1);
+
+// Lokalizacja użytkownika
+var userMarker = null;
+
+function locateUser(){
+  map.locate({setView: true, maxZoom: 16});
 }
 
-// Obsługa znalezienia lokalizacji
+document.getElementById('locateBtn').addEventListener('click', locateUser);
+
 function onLocationFound(e){
   if(!userMarker){
-    userMarker = L.marker(e.latlng, {icon:L.icon({
-      iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png', // czerwony marker
-      iconSize:[32,32],
-      iconAnchor:[16,32]
-    })}).addTo(map).bindPopup('Twoja pozycja');
+    userMarker = L.marker(e.latlng, {icon: redIcon}).addTo(map).bindPopup('Twoja pozycja');
   } else {
     userMarker.setLatLng(e.latlng);
   }
-  updateVisitedPoints(e.latlng);
 }
 
-// Funkcja sprawdzająca odległość do punktów i pokazująca komunikaty
-function updateVisitedPoints(latlng){
-  let dayPoints = pointsData.filter(p => p.day === currentDay);
-  dayPoints.forEach(p => {
-    let distance = map.distance(latlng, L.latLng(p.lat, p.lng));
-    if(distance < 50 && !p.visited){  // 50 metrów i jeszcze niezaliczony
-      p.visited = true;
-      showToast("✅ Zaliczyłeś punkt: " + p.name);
-    }
-  });
-
-  if(dayPoints.length > 0 && dayPoints.every(p => p.visited)){
-    showToast("🎉 Zaliczyłeś wszystkie punkty dnia " + currentDay);
-  }
-}
-
-// Komunikaty z przyciskiem OK
-function showToast(msg){
-  let toast = document.createElement("div");
-  toast.innerHTML = `<div style="
-    background: rgba(0,0,0,0.9); 
-    color: white; 
-    padding: 15px 20px; 
-    border-radius: 8px; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center;
-    min-width: 250px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
-  ">
-    <span>${msg}</span>
-    <button style="
-      margin-left: 10px; 
-      padding: 5px 10px; 
-      border: none; 
-      border-radius: 4px; 
-      cursor: pointer;
-      background: #007bff;
-      color: white;
-    ">OK</button>
-  </div>`;
-  toast.style.position = "fixed";
-  toast.style.bottom = "20px";
-  toast.style.left = "50%";
-  toast.style.transform = "translateX(-50%)";
-  toast.style.zIndex = "2000";
-  document.body.appendChild(toast);
-
-  toast.querySelector("button").addEventListener("click", () => {
-    toast.remove();
-  });
-}
-
-// Eventy lokalizacji
 map.on('locationfound', onLocationFound);
 map.on('locationerror', function(e){ alert('Nie można określić lokalizacji: ' + e.message); });
-
 </script>
 </body>
 </html>
